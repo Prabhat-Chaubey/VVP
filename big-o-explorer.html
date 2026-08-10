@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Visualizing Time Complexity: The Big O Explorer</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          void: '#0a0f1c',
+          panel: '#0f1729',
+          panel2: '#131d33',
+          hairline: '#22304d',
+          indigo: { DEFAULT: '#6366f1', dim: '#4338ca' },
+          violet: { DEFAULT: '#8b5cf6', dim: '#6d28d9' },
+          emerald: { DEFAULT: '#10b981', dim: '#059669' },
+          cyan: { DEFAULT: '#22d3ee' },
+          amber: { DEFAULT: '#f59e0b' },
+          rose: { DEFAULT: '#f43f5e' },
+        },
+        fontFamily: {
+          display: ['"Space Grotesk"', 'sans-serif'],
+          body: ['Inter', 'sans-serif'],
+          mono: ['"JetBrains Mono"', 'monospace'],
+        }
+      }
+    }
+  }
+</script>
+
+<style>
+  html { scroll-behavior: smooth; }
+  body { background-color: #0a0f1c; background-image: radial-gradient(circle at 15% 0%, rgba(99,102,241,0.10), transparent 40%), radial-gradient(circle at 85% 15%, rgba(139,92,246,0.08), transparent 45%); }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: #0a0f1c; }
+  ::-webkit-scrollbar-thumb { background: #22304d; border-radius: 6px; }
+  ::-webkit-scrollbar-thumb:hover { background: #334160; }
+
+  .pill { transition: all .15s ease; }
+  .pill[data-active="true"] { box-shadow: inset 0 0 0 1.5px currentColor; }
+
+  input[type=range] { -webkit-appearance: none; appearance: none; height: 6px; border-radius: 999px; background: linear-gradient(90deg,#4338ca,#6d28d9,#059669); outline: none; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 22px; height: 22px; border-radius: 999px; background: #f8fafc; border: 4px solid #6366f1; cursor: pointer; box-shadow: 0 0 0 4px rgba(99,102,241,.15), 0 2px 8px rgba(0,0,0,.6); transition: transform .1s ease; }
+  input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.08); }
+  input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 999px; background: #f8fafc; border: 4px solid #6366f1; cursor: pointer; }
+
+  .readout-num { font-variant-numeric: tabular-nums; }
+
+  .grid-cell { transition: background-color .12s ease, transform .12s ease, box-shadow .12s ease; }
+
+  .tick-glow { text-shadow: 0 0 12px currentColor; }
+
+  .tab-btn[data-active="true"] { background: #131d33; color: #fff; box-shadow: inset 0 0 0 1px #334160; }
+  .tab-btn[data-active="true"]::after { content:''; position:absolute; left:0; right:0; bottom:-1px; height:2px; background: var(--tab-accent, #6366f1); }
+
+  code[class^="lang-"] .kw { color: #a78bfa; }
+  code[class^="lang-"] .str { color: #34d399; }
+  code[class^="lang-"] .com { color: #64748b; font-style: italic; }
+  code[class^="lang-"] .num { color: #f59e0b; }
+  code[class^="lang-"] .fn { color: #22d3ee; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+  }
+
+  .focus-ring:focus-visible { outline: 2px solid #22d3ee; outline-offset: 2px; }
+</style>
+</head>
+
+<body class="min-h-screen font-body text-slate-200 selection:bg-indigo/40">
+
+<!-- ============ HEADER ============ -->
+<header class="border-b border-hairline/80">
+  <div class="max-w-7xl mx-auto px-6 py-10 sm:py-14">
+    <div class="flex items-center gap-2 text-emerald text-xs font-mono uppercase tracking-[0.25em] mb-4">
+      <span class="w-1.5 h-1.5 rounded-full bg-emerald tick-glow"></span>
+      Algorithm Performance Lab
+    </div>
+    <h1 class="font-display font-700 text-4xl sm:text-5xl md:text-6xl font-bold text-white tracking-tight leading-[1.05]">
+      Visualizing Time Complexity:<br class="hidden sm:block"> <span class="bg-gradient-to-r from-indigo via-violet to-cyan bg-clip-text text-transparent">The Big O Explorer</span>
+    </h1>
+    <p class="mt-5 max-w-2xl text-slate-400 text-base sm:text-lg leading-relaxed">
+      Big&nbsp;O notation describes how an algorithm's running time — or number of operations — grows as the input size <span class="font-mono text-slate-200">N</span> gets larger. It isn't a stopwatch reading; it's a growth curve. Drag the traveler below to feel exactly how fast that curve gets away from you.
+    </p>
+  </div>
+</header>
+
+<main class="max-w-7xl mx-auto px-6 py-10 space-y-16">
+
+  <!-- ============ SECTION 1: TIME TRAVELER SLIDER ============ -->
+  <section id="traveler" aria-labelledby="traveler-heading">
+    <div class="flex items-baseline justify-between flex-wrap gap-3 mb-6">
+      <h2 id="traveler-heading" class="font-display text-2xl font-semibold text-white flex items-center gap-2">
+        <i data-lucide="clock" class="w-5 h-5 text-cyan"></i> The Time Traveler
+      </h2>
+      <p class="text-slate-500 text-sm">Set the input size <span class="font-mono">N</span> and watch every complexity class react.</p>
+    </div>
+
+    <div class="rounded-2xl border border-hairline bg-panel p-6 sm:p-8">
+      <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-6">
+        <div>
+          <div class="text-xs uppercase tracking-widest text-slate-500 font-mono mb-1">Input size N</div>
+          <div id="nDisplay" class="font-mono readout-num text-5xl sm:text-6xl font-bold text-white tabular-nums">1,000</div>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <button data-preset="10" class="preset-btn px-3 py-1.5 rounded-lg bg-panel2 border border-hairline text-xs font-mono text-slate-300 hover:border-indigo hover:text-white transition">10</button>
+          <button data-preset="100" class="preset-btn px-3 py-1.5 rounded-lg bg-panel2 border border-hairline text-xs font-mono text-slate-300 hover:border-indigo hover:text-white transition">100</button>
+          <button data-preset="1000" class="preset-btn px-3 py-1.5 rounded-lg bg-panel2 border border-hairline text-xs font-mono text-slate-300 hover:border-indigo hover:text-white transition">1,000</button>
+          <button data-preset="10000" class="preset-btn px-3 py-1.5 rounded-lg bg-panel2 border border-hairline text-xs font-mono text-slate-300 hover:border-indigo hover:text-white transition">10,000</button>
+          <button data-preset="100000" class="preset-btn px-3 py-1.5 rounded-lg bg-panel2 border border-hairline text-xs font-mono text-slate-300 hover:border-indigo hover:text-white transition">100,000</button>
+          <button data-preset="1000000" class="preset-btn px-3 py-1.5 rounded-lg bg-panel2 border border-hairline text-xs font-mono text-slate-300 hover:border-indigo hover:text-white transition">1,000,000</button>
+        </div>
+      </div>
+
+      <input id="nSlider" type="range" min="0" max="6" step="0.001" value="3" class="w-full focus-ring" aria-label="Input size N, logarithmic scale from 1 to 1,000,000">
+      <div class="flex justify-between text-[10px] font-mono text-slate-600 mt-2 px-0.5">
+        <span>1</span><span>10</span><span>100</span><span>1K</span><span>10K</span><span>100K</span><span>1M</span>
+      </div>
+
+      <p class="text-xs text-slate-500 mt-4 font-mono">Benchmark: 10<sup>8</sup> operations / second (a conservative single-core CPU budget).</p>
+
+      <div id="comparisonGrid" class="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"></div>
+    </div>
+  </section>
+
+  <!-- ============ SECTION 2: COMPLEXITY CHART ============ -->
+  <section id="chart-section" aria-labelledby="chart-heading">
+    <div class="flex items-baseline justify-between flex-wrap gap-3 mb-6">
+      <h2 id="chart-heading" class="font-display text-2xl font-semibold text-white flex items-center gap-2">
+        <i data-lucide="trending-up" class="w-5 h-5 text-violet"></i> The Growth Curves
+      </h2>
+      <p class="text-slate-500 text-sm">Toggle curves on and off. Switch scales to see what's hiding underneath.</p>
+    </div>
+
+    <div class="rounded-2xl border border-hairline bg-panel p-6 sm:p-8">
+      <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+        <div id="curveToggles" class="flex flex-wrap gap-2"></div>
+        <div class="flex items-center gap-1 rounded-lg bg-panel2 border border-hairline p-1">
+          <button id="scaleLinearBtn" class="scale-btn px-3 py-1.5 rounded-md text-xs font-mono transition">Linear</button>
+          <button id="scaleLogBtn" class="scale-btn px-3 py-1.5 rounded-md text-xs font-mono transition">Logarithmic</button>
+        </div>
+      </div>
+      <div class="relative h-[380px] sm:h-[440px]">
+        <canvas id="bigOChart"></canvas>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SECTION 3: GRID ANIMATOR ============ -->
+  <section id="animator" aria-labelledby="animator-heading">
+    <div class="flex items-baseline justify-between flex-wrap gap-3 mb-6">
+      <h2 id="animator-heading" class="font-display text-2xl font-semibold text-white flex items-center gap-2">
+        <i data-lucide="grid-3x3" class="w-5 h-5 text-emerald"></i> Memory Array Simulator
+      </h2>
+      <p class="text-slate-500 text-sm">A 10×10 array of memory slots. Watch how each algorithm class touches it.</p>
+    </div>
+
+    <div class="rounded-2xl border border-hairline bg-panel p-6 sm:p-8">
+      <div class="grid lg:grid-cols-[auto,1fr] gap-8 items-start">
+        <div>
+          <div id="memGrid" class="grid grid-cols-10 gap-1.5 w-fit mx-auto lg:mx-0"></div>
+          <div class="flex justify-center lg:justify-start gap-6 mt-5 font-mono text-sm">
+            <div><span class="text-slate-500">Ops executed</span> <span id="opsCounter" class="text-white font-semibold">0</span></div>
+            <div><span class="text-slate-500">Time elapsed</span> <span id="timeCounter" class="text-white font-semibold">0 ms</span></div>
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-5">
+          <div>
+            <div class="text-xs uppercase tracking-widest text-slate-500 font-mono mb-2">Choose a complexity</div>
+            <div id="simChoices" class="flex flex-wrap gap-2"></div>
+          </div>
+          <div class="flex gap-3">
+            <button id="playSimBtn" class="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-indigo hover:bg-indigo-dim text-white text-sm font-semibold transition focus-ring">
+              <i data-lucide="play" class="w-4 h-4"></i> Play Simulation
+            </button>
+            <button id="resetSimBtn" class="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-panel2 border border-hairline hover:border-slate-500 text-slate-300 text-sm transition focus-ring">
+              <i data-lucide="rotate-ccw" class="w-4 h-4"></i> Reset
+            </button>
+          </div>
+          <p id="simDescription" class="text-sm text-slate-400 leading-relaxed border-l-2 border-hairline pl-4"></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SECTION 4: CODE BLUEPRINTS ============ -->
+  <section id="blueprints" aria-labelledby="blueprints-heading">
+    <div class="flex items-baseline justify-between flex-wrap gap-3 mb-6">
+      <h2 id="blueprints-heading" class="font-display text-2xl font-semibold text-white flex items-center gap-2">
+        <i data-lucide="code-2" class="w-5 h-5 text-amber"></i> Code Blueprints
+      </h2>
+      <p class="text-slate-500 text-sm">Real patterns behind every curve.</p>
+    </div>
+
+    <div class="rounded-2xl border border-hairline bg-panel overflow-hidden">
+      <div id="blueprintTabs" class="flex flex-wrap border-b border-hairline overflow-x-auto"></div>
+      <div id="blueprintBody" class="p-6 sm:p-8"></div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="border-t border-hairline mt-20">
+  <div class="max-w-7xl mx-auto px-6 py-8 text-xs text-slate-600 font-mono">
+    Built for CS students who want to feel the difference between "fast" and "fast enough." No frameworks, no build step — just open the file.
+  </div>
+</footer>
+
+<script>
+/* =========================================================
+   DATA: Complexity definitions
+   ========================================================= */
+const COMPLEXITIES = [
+  { key:'O1',    label:'O(1)',       plain:'O(1)',       color:'#10b981', fn: n => 1 },
+  { key:'OLOGN', label:'O(log N)',   plain:'O(log N)',   color:'#22d3ee', fn: n => Math.max(Math.log2(Math.max(n,1)), 0.0001) },
+  { key:'ON',    label:'O(N)',       plain:'O(N)',       color:'#6366f1', fn: n => n },
+  { key:'ONLOGN',label:'O(N log N)', plain:'O(N log N)', color:'#8b5cf6', fn: n => n * Math.max(Math.log2(Math.max(n,1)), 0.0001) },
+  { key:'ON2',   label:'O(N²)',      plain:'O(N^2)',     color:'#f59e0b', fn: n => n * n },
+  { key:'ON3',   label:'O(N³)',      plain:'O(N^3)',     color:'#f97316', fn: n => n * n * n },
+  { key:'O2N',   label:'O(2ᴺ)',      plain:'O(2^N)',     color:'#f43f5e', fn: n => n > 1024 ? Infinity : Math.pow(2, n) },
+];
+
+const OPS_PER_SECOND = 1e8;
+
+/* =========================================================
+   HELPERS: number + time formatting
+   ========================================================= */
+function formatOps(v) {
+  if (!isFinite(v)) return 'Infinity';
+  if (v > 1e15) return v.toExponential(2).replace('e+', ' × 10^');
+  return Math.round(v).toLocaleString('en-US');
+}
+
+function formatTime(seconds) {
+  if (!isFinite(seconds) || seconds > 1e15) return { text: 'Heat Death of the Universe', danger: true, cosmic: true };
+  if (seconds < 1e-6) return { text: (seconds * 1e9).toFixed(2) + ' ns', danger: false };
+  if (seconds < 1e-3) return { text: (seconds * 1e6).toFixed(2) + ' μs', danger: false };
+  if (seconds < 1) return { text: (seconds * 1e3).toFixed(2) + ' ms', danger: false };
+  if (seconds < 60) return { text: seconds.toFixed(2) + ' sec', danger: true };
+  if (seconds < 3600) return { text: (seconds / 60).toFixed(1) + ' min', danger: true };
+  if (seconds < 86400) return { text: (seconds / 3600).toFixed(1) + ' hrs', danger: true };
+  if (seconds < 31536000) return { text: (seconds / 86400).toFixed(1) + ' days', danger: true };
+  const years = seconds / 31536000;
+  if (years > 1e12) return { text: 'Heat Death of the Universe', danger: true, cosmic: true };
+  if (years > 1e6) return { text: years.toExponential(2).replace('e+', ' × 10^') + ' years', danger: true, cosmic: true };
+  return { text: Math.round(years).toLocaleString('en-US') + ' years', danger: true };
+}
+
+/* =========================================================
+   SECTION 1: Time Traveler slider + comparison grid
+   ========================================================= */
+const nSlider = document.getElementById('nSlider');
+const nDisplay = document.getElementById('nDisplay');
+const comparisonGrid = document.getElementById('comparisonGrid');
+
+function sliderToN(sliderVal) {
+  return Math.max(1, Math.round(Math.pow(10, parseFloat(sliderVal))));
+}
+function nToSlider(n) {
+  return Math.log10(Math.max(n, 1));
+}
+
+function renderComparisonGrid(n) {
+  comparisonGrid.innerHTML = '';
+  COMPLEXITIES.forEach(c => {
+    const ops = c.fn(n);
+    const seconds = isFinite(ops) ? ops / OPS_PER_SECOND : Infinity;
+    const t = formatTime(seconds);
+    const card = document.createElement('div');
+    card.className = `rounded-xl border p-4 bg-panel2 transition ${t.danger ? 'border-rose/60' : 'border-hairline'}`;
+    card.innerHTML = `
+      <div class="flex items-center justify-between mb-2">
+        <span class="font-mono text-sm font-semibold" style="color:${c.color}">${c.label}</span>
+        ${t.danger ? `<span class="text-[10px] font-mono uppercase tracking-wide px-1.5 py-0.5 rounded bg-rose/15 text-rose">${t.cosmic ? 'Cosmic' : 'TLE'}</span>` : ''}
+      </div>
+      <div class="font-mono text-xs text-slate-500 mb-1">${formatOps(ops)} ops</div>
+      <div class="font-mono text-lg font-bold ${t.danger ? 'text-rose' : 'text-white'} tabular-nums">${t.text}</div>
+    `;
+    comparisonGrid.appendChild(card);
+  });
+}
+
+function updateN(n, fromSlider) {
+  nDisplay.textContent = n.toLocaleString('en-US');
+  if (!fromSlider) nSlider.value = nToSlider(n);
+  renderComparisonGrid(n);
+}
+
+nSlider.addEventListener('input', () => updateN(sliderToN(nSlider.value), true));
+document.querySelectorAll('.preset-btn').forEach(btn => {
+  btn.addEventListener('click', () => updateN(parseInt(btn.dataset.preset, 10), false));
+});
+
+/* =========================================================
+   SECTION 2: Chart.js growth curves
+   ========================================================= */
+const curveToggles = document.getElementById('curveToggles');
+const activeCurves = new Set(COMPLEXITIES.map(c => c.key));
+let currentScale = 'linear';
+
+COMPLEXITIES.forEach(c => {
+  const pill = document.createElement('button');
+  pill.className = 'pill px-3 py-1.5 rounded-full text-xs font-mono border transition';
+  pill.style.borderColor = c.color;
+  pill.style.color = c.color;
+  pill.dataset.key = c.key;
+  pill.dataset.active = 'true';
+  pill.textContent = c.label;
+  pill.addEventListener('click', () => {
+    if (activeCurves.has(c.key)) { activeCurves.delete(c.key); pill.dataset.active = 'false'; pill.style.opacity = 0.35; }
+    else { activeCurves.add(c.key); pill.dataset.active = 'true'; pill.style.opacity = 1; }
+    updateChartVisibility();
+  });
+  curveToggles.appendChild(pill);
+});
+
+const CHART_N_MAX = 50;
+const chartLabels = Array.from({ length: CHART_N_MAX + 1 }, (_, i) => i);
+
+const chartDatasets = COMPLEXITIES.map(c => ({
+  label: c.label,
+  data: chartLabels.map(n => Math.min(c.fn(n === 0 ? 1 : n), 1e9)),
+  borderColor: c.color,
+  backgroundColor: c.color + '22',
+  borderWidth: 2.5,
+  pointRadius: 0,
+  pointHoverRadius: 4,
+  tension: 0.25,
+  key: c.key,
+}));
+
+const ctx = document.getElementById('bigOChart').getContext('2d');
+const bigOChart = new Chart(ctx, {
+  type: 'line',
+  data: { labels: chartLabels, datasets: chartDatasets },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#0f1729',
+        borderColor: '#22304d',
+        borderWidth: 1,
+        titleFont: { family: 'JetBrains Mono' },
+        bodyFont: { family: 'JetBrains Mono' },
+        callbacks: {
+          title: (items) => `N = ${items[0].label}`,
+          label: (item) => `${item.dataset.label}: ${formatOps(item.raw)} ops`,
+        }
+      }
+    },
+    scales: {
+      x: {
+        title: { display: true, text: 'Input size (N)', color: '#64748b', font: { family: 'JetBrains Mono', size: 11 } },
+        ticks: { color: '#64748b', font: { family: 'JetBrains Mono', size: 10 }, maxTicksLimit: 10 },
+        grid: { color: '#1a2338' },
+      },
+      y: {
+        type: 'linear',
+        title: { display: true, text: 'Operations', color: '#64748b', font: { family: 'JetBrains Mono', size: 11 } },
+        ticks: { color: '#64748b', font: { family: 'JetBrains Mono', size: 10 } },
+        grid: { color: '#1a2338' },
+        min: currentScale === 'log' ? 0.1 : 0,
+      }
+    }
+  }
+});
+
+function updateChartVisibility() {
+  bigOChart.data.datasets.forEach((ds, i) => {
+    bigOChart.setDatasetVisibility(i, activeCurves.has(ds.key));
+  });
+  bigOChart.update();
+}
+
+const scaleLinearBtn = document.getElementById('scaleLinearBtn');
+const scaleLogBtn = document.getElementById('scaleLogBtn');
+function setScale(scale) {
+  currentScale = scale;
+  bigOChart.options.scales.y.type = scale === 'log' ? 'logarithmic' : 'linear';
+  bigOChart.options.scales.y.min = scale === 'log' ? 0.1 : 0;
+  bigOChart.update();
+  scaleLinearBtn.className = `scale-btn px-3 py-1.5 rounded-md text-xs font-mono transition ${scale === 'linear' ? 'bg-indigo text-white' : 'text-slate-400 hover:text-white'}`;
+  scaleLogBtn.className = `scale-btn px-3 py-1.5 rounded-md text-xs font-mono transition ${scale === 'log' ? 'bg-indigo text-white' : 'text-slate-400 hover:text-white'}`;
+}
+scaleLinearBtn.addEventListener('click', () => setScale('linear'));
+scaleLogBtn.addEventListener('click', () => setScale('log'));
+
+/* =========================================================
+   SECTION 3: Memory array simulator
+   ========================================================= */
+const GRID_SIZE = 10;
+const TOTAL_CELLS = GRID_SIZE * GRID_SIZE;
+const memGrid = document.getElementById('memGrid');
+const opsCounter = document.getElementById('opsCounter');
+const timeCounter = document.getElementById('timeCounter');
+const simDescription = document.getElementById('simDescription');
+const playSimBtn = document.getElementById('playSimBtn');
+const resetSimBtn = document.getElementById('resetSimBtn');
+
+const cells = [];
+for (let i = 0; i < TOTAL_CELLS; i++) {
+  const cell = document.createElement('div');
+  cell.className = 'grid-cell w-6 h-6 sm:w-7 sm:h-7 rounded bg-panel2 border border-hairline';
+  memGrid.appendChild(cell);
+  cells.push(cell);
+}
+
+const SIM_MODES = [
+  {
+    key: 'O1', label: 'O(1)', color: '#10b981',
+    desc: 'Constant time. One direct lookup — a single array index access — regardless of how big the array gets. Example: reading arr[42].',
+  },
+  {
+    key: 'OLOGN', label: 'O(log N)', color: '#22d3ee',
+    desc: 'Binary search. Each step throws away half the remaining slots, so a 100-slot array takes only ~7 comparisons to search — not 100.',
+  },
+  {
+    key: 'ON', label: 'O(N)', color: '#6366f1',
+    desc: 'Linear scan. Every single slot gets visited once, left to right, until the work is done. Example: finding the max value in an unsorted array.',
+  },
+  {
+    key: 'ON2', label: 'O(N²)', color: '#f59e0b',
+    desc: 'Nested loop. For every slot the primary pointer visits, a secondary pointer sweeps the whole array again. Example: bubble sort comparing every pair.',
+  },
+];
+
+let simState = 'idle'; // idle | running
+let simTimers = [];
+let simStartTime = 0;
+let simIntervalId = null;
+let selectedSim = 'ON';
+
+const simChoices = document.getElementById('simChoices');
+SIM_MODES.forEach(mode => {
+  const btn = document.createElement('button');
+  btn.className = 'sim-choice px-3 py-1.5 rounded-lg text-xs font-mono border transition';
+  btn.style.borderColor = mode.color;
+  btn.dataset.key = mode.key;
+  btn.textContent = mode.label;
+  btn.addEventListener('click', () => {
+    if (simState === 'running') return;
+    selectedSim = mode.key;
+    renderSimChoices();
+  });
+  simChoices.appendChild(btn);
+});
+
+function renderSimChoices() {
+  document.querySelectorAll('.sim-choice').forEach(btn => {
+    const mode = SIM_MODES.find(m => m.key === btn.dataset.key);
+    const active = btn.dataset.key === selectedSim;
+    btn.style.color = active ? '#0a0f1c' : mode.color;
+    btn.style.backgroundColor = active ? mode.color : 'transparent';
+  });
+  simDescription.textContent = SIM_MODES.find(m => m.key === selectedSim).desc;
+}
+renderSimChoices();
+
+function resetGrid() {
+  cells.forEach(c => {
+    c.style.backgroundColor = '';
+    c.className = 'grid-cell w-6 h-6 sm:w-7 sm:h-7 rounded bg-panel2 border border-hairline';
+  });
+  opsCounter.textContent = '0';
+  timeCounter.textContent = '0 ms';
+}
+
+function stopSim() {
+  simTimers.forEach(id => clearTimeout(id));
+  simTimers = [];
+  if (simIntervalId) { clearInterval(simIntervalId); simIntervalId = null; }
+  simState = 'idle';
+  playSimBtn.disabled = false;
+  playSimBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+}
+
+function incOps(current) { opsCounter.textContent = current.toLocaleString('en-US'); }
+
+function startTimer() {
+  simStartTime = performance.now();
+  simIntervalId = setInterval(() => {
+    timeCounter.textContent = Math.round(performance.now() - simStartTime) + ' ms';
+  }, 50);
+}
+
+function highlightCell(idx, color, glow) {
+  cells[idx].style.backgroundColor = color;
+  cells[idx].style.boxShadow = glow ? `0 0 12px ${color}` : 'none';
+  cells[idx].style.transform = 'scale(1.06)';
+}
+function unhighlightCell(idx) {
+  cells[idx].style.transform = 'scale(1)';
+}
+
+function runSim() {
+  if (simState === 'running') return;
+  resetGrid();
+  simState = 'running';
+  playSimBtn.disabled = true;
+  playSimBtn.classList.add('opacity-50', 'cursor-not-allowed');
+  startTimer();
+
+  let opCount = 0;
+  const STEP_MS = 45;
+
+  const finish = () => {
+    if (simIntervalId) { clearInterval(simIntervalId); simIntervalId = null; }
+    timeCounter.textContent = Math.round(performance.now() - simStartTime) + ' ms (final)';
+    simState = 'idle';
+    playSimBtn.disabled = false;
+    playSimBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+  };
+
+  if (selectedSim === 'O1') {
+    const idx = Math.floor(Math.random() * TOTAL_CELLS);
+    opCount = 1;
+    highlightCell(idx, '#10b981', true);
+    incOps(opCount);
+    simTimers.push(setTimeout(finish, 500));
+
+  } else if (selectedSim === 'OLOGN') {
+    let lo = 0, hi = TOTAL_CELLS - 1;
+    const target = Math.floor(Math.random() * TOTAL_CELLS);
+    let delay = 0;
+    const step = () => {
+      if (lo > hi) { finish(); return; }
+      const mid = Math.floor((lo + hi) / 2);
+      opCount++;
+      highlightCell(mid, '#22d3ee', true);
+      incOps(opCount);
+      if (mid === target) { simTimers.push(setTimeout(finish, 600)); return; }
+      if (target < mid) hi = mid - 1; else lo = mid + 1;
+      simTimers.push(setTimeout(() => { unhighlightCell(mid); step(); }, 550));
+    };
+    step();
+
+  } else if (selectedSim === 'ON') {
+    for (let i = 0; i < TOTAL_CELLS; i++) {
+      simTimers.push(setTimeout(() => {
+        if (i > 0) unhighlightCell(i - 1);
+        highlightCell(i, '#6366f1', false);
+        opCount++;
+        incOps(opCount);
+        if (i === TOTAL_CELLS - 1) simTimers.push(setTimeout(finish, 300));
+      }, i * STEP_MS));
+    }
+
+  } else if (selectedSim === 'ON2') {
+    const OUTER_STEP = 260;
+    const INNER_STEP = 9;
+    for (let i = 0; i < TOTAL_CELLS; i++) {
+      simTimers.push(setTimeout(() => {
+        cells.forEach((c, idx) => { if (idx !== i) c.style.backgroundColor = ''; });
+        highlightCell(i, '#f59e0b', true);
+        for (let j = 0; j < TOTAL_CELLS; j++) {
+          simTimers.push(setTimeout(() => {
+            if (j > 0) cells[j - 1].style.boxShadow = 'none';
+            if (cells[j] !== cells[i]) { cells[j].style.backgroundColor = '#f59e0b55'; cells[j].style.boxShadow = '0 0 6px #f59e0b'; }
+            opCount++;
+            incOps(opCount);
+            if (i === TOTAL_CELLS - 1 && j === TOTAL_CELLS - 1) simTimers.push(setTimeout(finish, 300));
+          }, i * OUTER_STEP + j * INNER_STEP));
+        }
+      }, i * OUTER_STEP));
+    }
+  }
+}
+
+playSimBtn.addEventListener('click', runSim);
+resetSimBtn.addEventListener('click', () => { stopSim(); resetGrid(); });
+
+/* =========================================================
+   SECTION 4: Code blueprints
+   ========================================================= */
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function highlight(code, lang) {
+  let html = esc(code);
+  const strRe = /(['"])(?:(?!\1|\\).|\\.)*\1/g;
+  const strings = [];
+  html = html.replace(strRe, m => { strings.push(m); return `\u0000S${strings.length - 1}\u0000`; });
+
+  const comRe = lang === 'py' ? /#.*$/gm : /\/\/.*$/gm;
+  const comments = [];
+  html = html.replace(comRe, m => { comments.push(m); return `\u0000C${comments.length - 1}\u0000`; });
+
+  const kwPy = ['def','return','if','else','elif','for','while','in','import','from','class','not','and','or','True','False','None','pass','break','continue','yield','lambda'];
+  const kwJs = ['function','return','if','else','for','while','let','const','var','class','new','of','in','true','false','null','undefined','break','continue','typeof','=>'];
+  const keywords = lang === 'py' ? kwPy : kwJs;
+  const kwRe = new RegExp('\\b(' + keywords.map(k=>k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|') + ')\\b', 'g');
+  html = html.replace(kwRe, '<span class="kw">$1</span>');
+
+  html = html.replace(/\b([a-zA-Z_][a-zA-Z0-9_]*)(?=\()/g, '<span class="fn">$1</span>');
+  html = html.replace(/\b(\d+(\.\d+)?)\b/g, '<span class="num">$1</span>');
+
+  html = html.replace(/\u0000C(\d+)\u0000/g, (_, i) => `<span class="com">${comments[i]}</span>`);
+  html = html.replace(/\u0000S(\d+)\u0000/g, (_, i) => `<span class="str">${strings[i]}</span>`);
+  return html;
+}
+
+const BLUEPRINTS = {
+  O1: {
+    label: 'O(1)', color: '#10b981', title: 'Constant Time',
+    explain: "The work never changes, no matter how large the input gets. One operation, one answer — whether N is 10 or 10 billion.",
+    examples: ['Accessing an array element by index', 'Push/pop on a stack', 'Hash table lookup (average case)', 'Checking if a number is even'],
+    py: `def get_first(arr):\n    # Always exactly one operation.\n    return arr[0]`,
+    js: `function getFirst(arr) {\n  // Always exactly one operation.\n  return arr[0];\n}`,
+  },
+  OLOGN: {
+    label: 'O(log N)', color: '#22d3ee', title: 'Logarithmic Time',
+    explain: "Each step eliminates a chunk of the remaining problem, usually by half. Doubling N barely adds any extra work — a hallmark of divide-and-conquer search.",
+    examples: ['Binary search on a sorted array', 'Finding an element in a balanced BST', 'Bitwise operations on fixed-width integers'],
+    py: `def binary_search(arr, target):\n    lo, hi = 0, len(arr) - 1\n    while lo <= hi:\n        mid = (lo + hi) // 2\n        if arr[mid] == target:\n            return mid\n        elif arr[mid] < target:\n            lo = mid + 1\n        else:\n            hi = mid - 1\n    return -1`,
+    js: `function binarySearch(arr, target) {\n  let lo = 0, hi = arr.length - 1;\n  while (lo <= hi) {\n    const mid = Math.floor((lo + hi) / 2);\n    if (arr[mid] === target) return mid;\n    else if (arr[mid] < target) lo = mid + 1;\n    else hi = mid - 1;\n  }\n  return -1;\n}`,
+  },
+  ON: {
+    label: 'O(N)', color: '#6366f1', title: 'Linear Time',
+    explain: "Every element gets touched exactly once. Work scales directly with input size — twice the data means roughly twice the time.",
+    examples: ['Finding the max value in an unsorted array', 'Printing every item in a list', 'Linear search', 'Summing an array'],
+    py: `def find_max(arr):\n    best = arr[0]\n    for value in arr:\n        if value > best:\n            best = value\n    return best`,
+    js: `function findMax(arr) {\n  let best = arr[0];\n  for (const value of arr) {\n    if (value > best) best = value;\n  }\n  return best;\n}`,
+  },
+  ONLOGN: {
+    label: 'O(N log N)', color: '#8b5cf6', title: 'Linearithmic Time',
+    explain: "The sweet spot for comparison-based sorting: split the problem logarithmically, but still touch every element at each of those log levels.",
+    examples: ['Merge sort', 'Quick sort (average case)', 'Heap sort', 'Building a balanced BST from sorted data'],
+    py: `def merge_sort(arr):\n    if len(arr) <= 1:\n        return arr\n    mid = len(arr) // 2\n    left = merge_sort(arr[:mid])\n    right = merge_sort(arr[mid:])\n    return merge(left, right)\n\ndef merge(a, b):\n    result, i, j = [], 0, 0\n    while i < len(a) and j < len(b):\n        if a[i] <= b[j]:\n            result.append(a[i]); i += 1\n        else:\n            result.append(b[j]); j += 1\n    return result + a[i:] + b[j:]`,
+    js: `function mergeSort(arr) {\n  if (arr.length <= 1) return arr;\n  const mid = Math.floor(arr.length / 2);\n  const left = mergeSort(arr.slice(0, mid));\n  const right = mergeSort(arr.slice(mid));\n  return merge(left, right);\n}\n\nfunction merge(a, b) {\n  const result = [];\n  let i = 0, j = 0;\n  while (i < a.length && j < b.length) {\n    if (a[i] <= b[j]) result.push(a[i++]);\n    else result.push(b[j++]);\n  }\n  return result.concat(a.slice(i), b.slice(j));\n}`,
+  },
+  ON2: {
+    label: 'O(N²)', color: '#f59e0b', title: 'Quadratic Time',
+    explain: "A loop inside a loop. For every element, you sweep the whole collection again — work grows with the square of the input.",
+    examples: ['Bubble sort / insertion sort', 'Checking every pair of elements', 'Naive duplicate detection', 'Adjacency matrix traversal'],
+    py: `def has_duplicate_pair(arr):\n    n = len(arr)\n    for i in range(n):\n        for j in range(i + 1, n):\n            if arr[i] == arr[j]:\n                return True\n    return False`,
+    js: `function hasDuplicatePair(arr) {\n  for (let i = 0; i < arr.length; i++) {\n    for (let j = i + 1; j < arr.length; j++) {\n      if (arr[i] === arr[j]) return true;\n    }\n  }\n  return false;\n}`,
+  },
+  ON3: {
+    label: 'O(N³)', color: '#f97316', title: 'Cubic Time',
+    explain: "Three nested loops over the same input. Common in naive matrix operations — becomes painfully slow past a few hundred elements.",
+    examples: ['Naive matrix multiplication', 'Triple-nested brute force searches', 'Some dynamic programming formulations (e.g. naive interval DP)'],
+    py: `def multiply(a, b):\n    n = len(a)\n    result = [[0] * n for _ in range(n)]\n    for i in range(n):\n        for j in range(n):\n            for k in range(n):\n                result[i][j] += a[i][k] * b[k][j]\n    return result`,
+    js: `function multiply(a, b) {\n  const n = a.length;\n  const result = Array.from({ length: n }, () => new Array(n).fill(0));\n  for (let i = 0; i < n; i++) {\n    for (let j = 0; j < n; j++) {\n      for (let k = 0; k < n; k++) {\n        result[i][j] += a[i][k] * b[k][j];\n      }\n    }\n  }\n  return result;\n}`,
+  },
+  O2N: {
+    label: 'O(2ᴺ)', color: '#f43f5e', title: 'Exponential Time',
+    explain: "Every additional element doubles the total work. Only tractable for very small N — the classic sign an algorithm needs a smarter approach.",
+    examples: ['Naive recursive Fibonacci', 'Generating every subset of a set (power set)', 'Brute-force solving the traveling salesman problem'],
+    py: `def fib(n):\n    if n <= 1:\n        return n\n    # Each call branches into two more calls.\n    return fib(n - 1) + fib(n - 2)`,
+    js: `function fib(n) {\n  if (n <= 1) return n;\n  // Each call branches into two more calls.\n  return fib(n - 1) + fib(n - 2);\n}`,
+  },
+};
+
+const blueprintTabs = document.getElementById('blueprintTabs');
+const blueprintBody = document.getElementById('blueprintBody');
+let activeBlueprint = 'ON';
+
+Object.keys(BLUEPRINTS).forEach(key => {
+  const bp = BLUEPRINTS[key];
+  const tab = document.createElement('button');
+  tab.className = 'tab-btn relative px-4 py-3 text-xs sm:text-sm font-mono text-slate-400 hover:text-white transition whitespace-nowrap';
+  tab.style.setProperty('--tab-accent', bp.color);
+  tab.dataset.key = key;
+  tab.textContent = bp.label;
+  tab.addEventListener('click', () => { activeBlueprint = key; renderBlueprint(); });
+  blueprintTabs.appendChild(tab);
+});
+
+function renderBlueprint() {
+  document.querySelectorAll('.tab-btn').forEach(t => t.dataset.active = (t.dataset.key === activeBlueprint) ? 'true' : 'false');
+  const bp = BLUEPRINTS[activeBlueprint];
+  blueprintBody.innerHTML = `
+    <div class="flex items-center gap-3 mb-3">
+      <span class="font-mono text-2xl font-bold" style="color:${bp.color}">${bp.label}</span>
+      <span class="font-display text-lg text-white">${bp.title}</span>
+    </div>
+    <p class="text-slate-400 leading-relaxed mb-5 max-w-3xl">${bp.explain}</p>
+    <div class="mb-6">
+      <div class="text-xs uppercase tracking-widest text-slate-500 font-mono mb-2">Where you'll see it</div>
+      <div class="flex flex-wrap gap-2">
+        ${bp.examples.map(e => `<span class="px-3 py-1 rounded-full bg-panel2 border border-hairline text-xs text-slate-300">${e}</span>`).join('')}
+      </div>
+    </div>
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="rounded-xl border border-hairline overflow-hidden">
+        <div class="px-4 py-2 bg-panel2 border-b border-hairline text-xs font-mono text-slate-400">Python</div>
+        <pre class="p-4 overflow-x-auto text-sm leading-relaxed bg-[#0a0f1c]"><code class="lang-py font-mono">${highlight(bp.py, 'py')}</code></pre>
+      </div>
+      <div class="rounded-xl border border-hairline overflow-hidden">
+        <div class="px-4 py-2 bg-panel2 border-b border-hairline text-xs font-mono text-slate-400">JavaScript</div>
+        <pre class="p-4 overflow-x-auto text-sm leading-relaxed bg-[#0a0f1c]"><code class="lang-js font-mono">${highlight(bp.js, 'js')}</code></pre>
+      </div>
+    </div>
+  `;
+}
+
+/* =========================================================
+   INIT
+   ========================================================= */
+updateN(1000, false);
+setScale('linear');
+renderBlueprint();
+resetGrid();
+lucide.createIcons();
+</script>
+</body>
+</html>
