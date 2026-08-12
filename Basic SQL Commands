@@ -1,0 +1,30 @@
+-- SELECT CustomerName, City FROM Customers;
+-- SELECT * FROM Customers;
+
+-- // DISTINCT
+-- SELECT DISTINCT Country FROM Customers;
+
+-- FILTERS
+-- SELECT CustomerName,Country from Customers WHERE Country='Germany'
+-- View the tada for specific branch
+
+-- AND operations
+-- SELECT * FROM Customers
+-- WHERE Country ='Germany' and CustomerName Like 'A%';
+
+-- or operations
+-- SELECT * FROM Customers
+-- WHERE Country ='Germany' or Country ='Spain';  
+
+-- not operator
+-- takes the output for negative condution
+-- SELECT * FROM Customers
+-- WHERE NOT Country ='Germany';
+
+-- PAranthesus condition
+-- SELECT * FROM Customers
+-- WHERE Country ='Germany' AND (City='Berlin' or City = 'Stavanger');
+
+-- SELECT * FROM Customers WHERE CustomerName LIKE 'A%'; 
+-- SELECT * FROM Customers WHERE CustomerName LIKE '%a'; 
+-- SELECT * FROM Customers Where CustomerName LIKE '%a%';
