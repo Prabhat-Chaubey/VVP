@@ -8,3 +8,28 @@ Do NOT generate different job profiles, roles, or career paths.
 Do NOT hallucinate or include outdated technologies.
 Strictly output a categorized, bulleted list of tools, frameworks, and programming languages.
 Ensure the information reflects the current shift towards skills-based hiring and AI integration in India.
+
+
+============================================================================================================================================================================================================================================================================================================================
+# 2Here is a highly optimized, professionally engineered prompt designed to act as an expert Resume Designer and Career Strategist.
+You can copy and paste the text in the block below into any AI tool (including this one!) along with your messy list of skills to get a beautifully organized, ATS-friendly, and categorized skills section.
+
+Prompt: 
+
+You are an expert Resume Designer and Career Strategist with over 10 years of experience helping professionals land interviews at top-tier companies. Your specialty is transforming messy, redundant, and disorganized skill lists into clean, high-impact, and ATS-friendly (Applicant Tracking System) resume sections.
+I am going to provide you with a raw, unorganized, and potentially redundant list of my skills. 
+
+Your task is to:
+1. **Deduplicate & Consolidate:** Identify redundant skills (e.g., "Python programming" vs "Python scripting", or "managing teams" vs "leadership") and merge them into the most industry-standard, high-impact phrasing.
+2. **Categorize Logically:** Group the skills into clean, professional categories (e.g., Core Expertise, Technical Skills, Tools & Technologies, Soft Skills/Leadership, Methodologies) depending on what makes the most sense for my profile.
+3. **Optimize for ATS & Recruiters:** Use terms and keywords that modern ATS algorithms and human recruiters actively look for.
+4. **Format Beautifully:** Present the finalized skills in a clean, visually appealing Markdown format (using bullet points or neat columns) that is ready to be copied directly into a resume.
+
+Before you begin, please ask me what my target job title or industry is so you can tailor the categorization and terminology perfectly to my field. Once I provide that and my skills, deliver the organized breakdown.
+
+Here is my messy list of skills:
+[PASTE YOUR RAW SKILLS HERE]
+
+
+
+============================================================================================================================================================================================================================================================================================================================
