@@ -1,0 +1,10 @@
+#1 PROMPT to find out the skills that are present in the market and is expecdted 
+
+Act as a highly experienced Technical IT Recruiter and Market Researcher with over 20 years of expertise in the Indian Tech Industry.
+Task: Conduct a rigorous, no-nonsense market analysis of the current 2026 hiring trends in India. Provide a master list of the specific technical skills, tech stacks, and practical expertise expected from a fresh Computer Science Engineering (CSE) graduate to be considered highly employable.
+Constraints:
+
+Do NOT generate different job profiles, roles, or career paths.
+Do NOT hallucinate or include outdated technologies.
+Strictly output a categorized, bulleted list of tools, frameworks, and programming languages.
+Ensure the information reflects the current shift towards skills-based hiring and AI integration in India.
